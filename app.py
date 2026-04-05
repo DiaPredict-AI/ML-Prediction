@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for
 import pickle
-import numpy as np
 import os
 import sqlite3
-from werkzeug.security import check_password_hash
+import hashlib
+import hmac
 
 app = Flask(__name__)
 
@@ -15,6 +15,26 @@ MODEL_FILE = os.path.join(BASE_DIR, "models", "diabetes_model.pkl")
 SCALER_FILE = os.path.join(BASE_DIR, "models", "scaler.pkl")
 
 # --- HELPER: Database Verification ---
+def verify_password(stored_hash, password):
+    """
+    Verifies a password against a stored hash.
+    Hash format: pbkdf2_sha256$iterations$salt$hash
+    Uses Python's built-in hashlib (no third-party libraries needed).
+    """
+    try:
+        algorithm, iterations, salt, hash_value = stored_hash.split('$')
+        iterations = int(iterations)
+        new_hash = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            salt.encode('utf-8'),
+            iterations
+        ).hex()
+        return hmac.compare_digest(new_hash, hash_value)
+    except Exception:
+        return False
+
+
 def check_credentials(username, password):
     """
     Connects to SQLite DB and checks if username exists and password matches the hash.
@@ -27,7 +47,7 @@ def check_credentials(username, password):
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        
+
         # Fetch the password hash for the given username
         cursor.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
         user_record = cursor.fetchone()
@@ -36,7 +56,7 @@ def check_credentials(username, password):
         if user_record:
             stored_hash = user_record[0]
             # Verify the provided password against the stored hash
-            return check_password_hash(stored_hash, password)
+            return verify_password(stored_hash, password)
         return False
     except Exception as e:
         print(f"Database Error: {e}")
@@ -98,8 +118,8 @@ def predict():
             float(request.form['age'])
         ]
 
-        # Scale the data (StandardScaler expects a 2D array)
-        final_features = [np.array(features)]
+        # Scale the data (StandardScaler accepts a plain 2D list)
+        final_features = [features]
         scaled_data = scaler.transform(final_features)
         
         # Predict
