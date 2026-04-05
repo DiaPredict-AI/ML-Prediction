@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Intelligence Platform</title>
+
+    <!-- We moved the JS libraries to local files instead of loading them from CDNs -->
+    <!-- Previously these were fetched from cdn.jsdelivr.net, unpkg.com, and cdnjs.cloudflare.com -->
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/lucide.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jspdf.js') }}"></script>
+
+    <style>
+        /* Here's where we set up our color palette and reset default browser styles */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e3a8a;
+            --secondary: #0f172a;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--white);
+            color: var(--secondary);
+            line-height: 1.5;
+        }
+
+        /* Reusable helper classes for layout and buttons */
+        .container {
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #475569;
+            color: white;
+        }
+
+        .btn-outline:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Logout button fixed in the top-left corner of the header */
+        .logout-bar {
+            position: absolute;
+            top: 1.25rem;
+            left: 1.5rem;
+            z-index: 20;
+        }
+
+        .logout-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.1rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 9999px;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .logout-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .logout-username {
+            color: #93c5fd;
+            font-weight: 600;
+        }
+
+        /* The big hero banner at the top of the page with the gradient background */
+        header {
+            background: linear-gradient(to right, #1e3a8a, #0f172a);
+            color: white;
+            padding: 5rem 0 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+
+        @media (min-width: 768px) {
+            .header-content {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .header-text {
+            max-width: 600px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #93c5fd;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        /* This gives the heading text a cool gradient color effect */
+        .highlight-text {
+            background: linear-gradient(90deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #cbd5e1;
+            font-size: 1.125rem;
+            margin-bottom: 2rem;
+            max-width: 500px;
+        }
+
+        /* The floating glassmorphism card in the hero section that shows model accuracy */
+        .hero-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* This makes the hero card gently bob up and down */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* The data analytics section with the two chart cards */
+        .stats-section {
+            padding: 5rem 0;
+            background-color: var(--bg-light);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+
+        .section-desc {
+            text-align: center;
+            color: var(--text-light);
+            margin-bottom: 4rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .chart-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            height: 350px;
+            position: relative;
+        }
+
+        /* Tooltip that appears when you hover over a chart card */
+        .chart-tooltip-wrap {
+            position: relative;
+        }
+
+        .chart-tooltip-wrap .chart-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%) translateY(6px);
+            background: var(--secondary);
+            color: #e2e8f0;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            white-space: normal;
+            width: max-content;
+            max-width: 280px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 10;
+        }
+
+        /* The little arrow pointing down from the tooltip */
+        .chart-tooltip-wrap .chart-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--secondary);
+        }
+
+        .chart-tooltip-wrap:hover .chart-tooltip {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* The prediction form where users enter their health metrics */
+        .form-section {
+            padding: 6rem 0;
+            background: white;
+            position: relative;
+        }
+
+        .form-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+
+        @media (min-width: 1024px) {
+            .form-layout {
+                flex-direction: row;
+            }
+
+            .form-col-left {
+                width: 60%;
+            }
+
+            .form-col-right {
+                width: 40%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .input-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            background-color: var(--bg-light);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            background-color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-submit {
+            grid-column: 1 / -1;
+            width: 100%;
+            background: linear-gradient(to right, var(--primary), #4f46e5);
+            color: white;
+            font-weight: 700;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: none;
+            font-size: 1.125rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            transition: transform 0.2s;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+
+        /* The card on the right side that shows the prediction result */
+        .result-card {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .status-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .status-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .icon-neutral {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+
+        .icon-positive {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .icon-negative {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .result-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .text-danger {
+            color: #ef4444;
+        }
+
+        .text-success {
+            color: #22c55e;
+        }
+
+        .btn-download {
+            width: 100%;
+            background-color: var(--secondary);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* A simple spinning animation shown while the model is processing */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        footer {
+            background-color: var(--secondary);
+            color: #64748b;
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ========== HERO / HEADER SECTION ========== -->
+    <!-- This is the big blue gradient banner the user sees first -->
+    <header>
+        <!-- Logout button with username in the top-left corner -->
+        <div class="logout-bar">
+            <a href="/" class="logout-btn">
+                <i data-lucide="log-out"></i>
+                <span class="logout-username">{{ username if username else 'User' }}</span>
+                <span>| Logout</span>
+            </a>
+        </div>
+
+        <div class="container">
+            <div class="header-content">
+                <div class="header-text">
+                    <div class="badge">
+                        <i data-lucide="activity"></i>
+                        <span>AI-Powered Healthcare</span>
+                    </div>
+                    <h1>
+                        Intelligent Disease <br />
+                        <span class="highlight-text">Prediction System</span>
+                    </h1>
+                    <p class="subtitle">
+                        Leveraging Machine Learning algorithms trained on clinical data to assess diabetes risk factors
+                        with high precision.
+                    </p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button onclick="document.getElementById('predict-section').scrollIntoView()"
+                            class="btn btn-primary">
+                            Start Assessment <i data-lucide="chevron-right"></i>
+                        </button>
+                        <button class="btn btn-outline">View Analysis</button>
+                    </div>
+                </div>
+
+                <!-- The floating accuracy card with a live Chart.js line graph -->
+                <div class="hero-card chart-tooltip-wrap">
+                    <span class="chart-tooltip">Accuracy trend across 5 ML models — Gradient Boosting leads at
+                        78.5%.</span>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="color: white; font-weight: 600;">Model Accuracy</h3>
+                            <p style="color: #94a3b8; font-size: 0.75rem;">Based on Test Data</p>
+                        </div>
+                        <div
+                            style="background: rgba(59,130,246,0.2); color: #60a5fa; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; height: fit-content;">
+                            78.5% Accuracy
+                        </div>
+                    </div>
+                    <div style="height: 200px; width: 100%;">
+                        <canvas id="heroChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== DATA ANALYTICS SECTION ========== -->
+    <!-- Two chart cards showing model comparison and glucose distribution -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="section-title">Data Analytics & Insights</div>
+            <p class="section-desc">Analysis of the Pima Indians Diabetes Dataset correlations.</p>
+
+            <div class="grid-2">
+                <div class="chart-card chart-tooltip-wrap">
+                    <span class="chart-tooltip">Side-by-side accuracy comparison of all 5 models tested on the diabetes
+                        dataset.</span>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="chart-card chart-tooltip-wrap">
+                    <span class="chart-tooltip">Glucose level distribution — diabetic patients tend to cluster in the
+                        120–200 mg/dL range.</span>
+                    <canvas id="glucoseChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PREDICTION FORM SECTION ========== -->
+    <!-- The user fills in 8 health metrics here and submits to get a prediction -->
+    <section id="predict-section" class="form-section">
+        <div class="container">
+            <div class="form-layout">
+
+                <div class="form-col-left">
+                    <h2 style="font-size: 2rem; font-weight: 700; color: var(--secondary);">Health Assessment</h2>
+                    <p style="color: var(--text-light);">Enter patient metrics below.</p>
+
+                    <!-- This form POSTs to our Flask /predict route and triggers the loading spinner -->
+                    <form action="/predict" method="POST" class="input-grid" onsubmit="showLoading()">
+                        <!-- Hidden field to persist username across prediction submissions -->
+                        <input type="hidden" name="username" value="{{ username if username else '' }}">
+                        <div class="form-group">
+                            <label>Pregnancies</label>
+                            <input type="number" name="pregnancies" id="inp-pregnancies" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Glucose Level</label>
+                            <input type="number" name="glucose" id="inp-glucose" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Blood Pressure (mm Hg)</label>
+                            <input type="number" name="bp" id="inp-bp" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Skin Thickness (mm)</label>
+                            <input type="number" name="skinthickness" id="inp-skinthickness" class="form-control"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label>Insulin (mu U/ml)</label>
+                            <input type="number" name="insulin" id="inp-insulin" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>BMI</label>
+                            <input type="number" name="bmi" id="inp-bmi" class="form-control" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Diabetes Pedigree</label>
+                            <input type="number" name="dpf" id="inp-dpf" class="form-control" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Age (Years)</label>
+                            <input type="number" name="age" id="inp-age" class="form-control" required>
+                        </div>
+
+                        <button type="submit" class="btn-submit">
+                            Run Prediction Model <i data-lucide="chevron-right"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="form-col-right">
+                    <div class="result-card">
+
+                        <!-- Jinja2 template logic: show the right state depending on whether we have a result -->
+                        {% if not prediction_text %}
+                        <div id="initialState">
+                            <div class="status-icon icon-neutral"><i data-lucide="brain"></i></div>
+                            <h3>Ready to Analyze</h3>
+                            <p style="color: var(--text-light); margin-top: 0.5rem;">Fill the form to generate a
+                                real-time risk assessment.</p>
+                        </div>
+                        {% endif %}
+
+                        <div id="loadingState" class="hidden">
+                            <div class="spinner"></div>
+                            <h3>Processing Data...</h3>
+                        </div>
+
+                        {% if prediction_text %}
+                        <div id="resultState">
+                            {% if "Not Diabetic" in prediction_text %}
+                            <div class="status-icon icon-negative"><i data-lucide="shield-check"></i></div>
+                            <h2 class="result-title">Negative</h2>
+                            <p class="text-success" style="font-weight: 600;">{{ prediction_text }}</p>
+                            {% else %}
+                            <div class="status-icon icon-positive"><i data-lucide="alert-circle"></i></div>
+                            <h2 class="result-title">Positive</h2>
+                            <p class="text-danger" style="font-weight: 600;">{{ prediction_text }}</p>
+                            {% endif %}
+
+                            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem;">*AI estimation. Consult a
+                                professional.</p>
+
+                            <button onclick="generatePDF()" class="btn-download">
+                                <i data-lucide="download"></i> Download Medical Report
+                            </button>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer>
+        <div class="container">
+            <p>Diabetes Prediction System</p>
+        </div>
+    </footer>
+
+    <script>
+        // Kick off Lucide so all our <i data-lucide="..."> tags turn into actual SVG icons
+        lucide.createIcons();
+
+        // Shared chart settings we reuse across all our Chart.js graphs
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { display: false }, y: { display: false } }
+        };
+
+        // The ML models we tested and their accuracy scores from our notebook
+        const modelLabels = ["Logistic Regression", "Random Forest", "SVM", "KNN", "Gradient Boosting"];
+        const modelAccuracy = [75.3, 77.1, 76.2, 73.8, 78.5];
+
+        // Line chart inside the floating hero card
+        new Chart(document.getElementById('heroChart'), {
+            type: 'line',
+            data: {
+                labels: modelLabels,
+                datasets: [{
+                    data: modelAccuracy,
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: chartOptions
+        });
+
+        // Bar chart comparing each model's accuracy side by side
+        new Chart(document.getElementById('performanceChart'), {
+            type: 'bar',
+            data: {
+                labels: modelLabels,
+                datasets: [{
+                    label: 'Accuracy (%)',
+                    data: modelAccuracy,
+                    backgroundColor: ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: true, grid: { display: false } },
+                    y: { display: true, min: 60 }
+                }
+            }
+        });
+
+        // Area chart showing glucose level distribution for diabetic vs non-diabetic patients
+        new Chart(document.getElementById('glucoseChart'), {
+            type: 'line',
+            data: {
+                labels: ['0-90', '90-120', '120-150', '150-200'],
+                datasets: [
+                    {
+                        label: 'Non-Diabetic',
+                        data: [20, 60, 15, 5],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Diabetic',
+                        data: [5, 15, 45, 35],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true } }
+            }
+        });
+
+        // 10 sample test cases based on realistic Pima Indians Diabetes Dataset values
+        // A random one is loaded into the form each time the page refreshes
+        const testCases = [
+            { pregnancies: 6, glucose: 148, bp: 72, skinthickness: 35, insulin: 0, bmi: 33.6, dpf: 0.63, age: 50 },
+            { pregnancies: 1, glucose: 85, bp: 66, skinthickness: 29, insulin: 0, bmi: 26.6, dpf: 0.35, age: 31 },
+            { pregnancies: 8, glucose: 183, bp: 64, skinthickness: 0, insulin: 0, bmi: 23.3, dpf: 0.67, age: 32 },
+            { pregnancies: 0, glucose: 137, bp: 40, skinthickness: 35, insulin: 168, bmi: 43.1, dpf: 2.29, age: 33 },
+            { pregnancies: 5, glucose: 116, bp: 74, skinthickness: 0, insulin: 0, bmi: 25.6, dpf: 0.20, age: 30 },
+            { pregnancies: 3, glucose: 78, bp: 50, skinthickness: 32, insulin: 88, bmi: 31.0, dpf: 0.25, age: 26 },
+            { pregnancies: 10, glucose: 115, bp: 0, skinthickness: 0, insulin: 0, bmi: 35.3, dpf: 0.13, age: 29 },
+            { pregnancies: 2, glucose: 197, bp: 70, skinthickness: 45, insulin: 543, bmi: 30.5, dpf: 0.16, age: 53 },
+            { pregnancies: 4, glucose: 110, bp: 92, skinthickness: 0, insulin: 0, bmi: 37.6, dpf: 0.19, age: 30 },
+            { pregnancies: 7, glucose: 100, bp: 0, skinthickness: 0, insulin: 0, bmi: 30.0, dpf: 0.48, age: 32 }
+        ];
+
+        // Pick a random test case and fill the form with it
+        const randomCase = testCases[Math.floor(Math.random() * testCases.length)];
+        document.getElementById('inp-pregnancies').value = randomCase.pregnancies;
+        document.getElementById('inp-glucose').value = randomCase.glucose;
+        document.getElementById('inp-bp').value = randomCase.bp;
+        document.getElementById('inp-skinthickness').value = randomCase.skinthickness;
+        document.getElementById('inp-insulin').value = randomCase.insulin;
+        document.getElementById('inp-bmi').value = randomCase.bmi;
+        document.getElementById('inp-dpf').value = randomCase.dpf;
+        document.getElementById('inp-age').value = randomCase.age;
+
+        // When the user hits submit, we hide everything and show the spinner
+        function showLoading() {
+            const initial = document.getElementById('initialState');
+            const result = document.getElementById('resultState');
+            const loading = document.getElementById('loadingState');
+
+            if (initial) initial.style.display = 'none';
+            if (result) result.style.display = 'none';
+            if (loading) loading.style.display = 'block';
+        }
+
+        // If Flask already sent back a prediction, auto-scroll down to show it
+        const predictionText = "{{ prediction_text if prediction_text else '' }}";
+        if (predictionText) {
+            document.getElementById('predict-section').scrollIntoView();
+        }
+
+        // Generates a downloadable PDF report with the patient's metrics and prediction result
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Draw the blue header banner on the PDF
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text("Diabetes Risk Assessment Report", 20, 25);
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text("Patient Metrics:", 20, 55);
+            doc.setFontSize(11);
+            doc.setTextColor(80, 80, 80);
+
+            // Grab all the values the user typed into the form
+            const inputs = {
+                "Pregnancies": document.getElementsByName('pregnancies')[0].value,
+                "Glucose Level": document.getElementsByName('glucose')[0].value + " mg/dL",
+                "Blood Pressure": document.getElementsByName('bp')[0].value + " mm Hg",
+                "Skin Thickness": document.getElementsByName('skinthickness')[0].value + " mm",
+                "Insulin": document.getElementsByName('insulin')[0].value + " mu U/ml",
+                "BMI": document.getElementsByName('bmi')[0].value,
+                "Diabetes Pedigree": document.getElementsByName('dpf')[0].value,
+                "Age": document.getElementsByName('age')[0].value + " Years"
+            };
+
+            let yPos = 65;
+            Object.entries(inputs).forEach(([key, value]) => {
+                doc.text(`${key}:`, 20, yPos);
+                doc.text(`${value}`, 80, yPos);
+                yPos += 8;
+            });
+
+            // Pull in the prediction result from Flask and write it into the PDF
+            const pText = "{{ prediction_text if prediction_text else 'Not Available' }}";
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, yPos + 10, 190, yPos + 10);
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text("AI Model Prediction:", 20, yPos + 25);
+            doc.setFontSize(18);
+
+            if (pText.includes("Not Diabetic")) {
+                doc.setTextColor(22, 163, 74);
+                doc.text("NEGATIVE (Low Risk)", 20, yPos + 35);
+            } else {
+                doc.setTextColor(220, 38, 38);
+                doc.text("POSITIVE (High Risk)", 20, yPos + 35);
+            }
+
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Disclaimer: Not a medical diagnosis.", 20, 280);
+            doc.save("Diabetes_Assessment_Report.pdf");
+        }
+    </script>
+</body>
+
+</html>
