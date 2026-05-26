@@ -15,3 +15,6 @@ database/users.db
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+
+# Zip Archives
+*.zip
