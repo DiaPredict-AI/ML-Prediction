@@ -38,7 +38,6 @@ ML Project/
 ├── app.py                        # Flask server — routes, auth, and prediction logic
 ├── requirements.txt              # Python dependencies
 ├── README.md
-├── README_temp.md                # Temporary README with screenshots
 ├── .gitignore
 │
 ├── assets/                       # Screenshots and application assets
@@ -61,9 +60,6 @@ ML Project/
 ├── database/
 │   ├── force_create_db.py       # Script to initialize SQLite DB with a default admin user
 │   └── users.db                 # SQLite database for user credentials
-│
-├── reports/
-│   └── Diabetes prediction.pdf  # Sample generated report
 │
 ├── static/
 │   └── js/                      # Local JS libraries (Chart.js, Lucide Icons, jsPDF)
