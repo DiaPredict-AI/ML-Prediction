@@ -12,7 +12,7 @@ An AI-powered web application that predicts diabetes risk using Machine Learning
 
 * **🔐 Secure Login** — SQLite-backed authentication with hashed passwords (Werkzeug)
   <p align="left">
-    <img src="assets/login.png" alt="Login Page" width="400">
+    <img src="assets/login.png" alt="Login Page" width="600">
   </p>
   
 * **🤖 ML Prediction** — Gradient Boosting classifier (~78.5% accuracy) predicts diabetes risk from 8 health metrics
