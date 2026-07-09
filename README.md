@@ -38,6 +38,7 @@ ML Project/
 ├── app.py                        # Flask server — routes, auth, and prediction logic
 ├── requirements.txt              # Python dependencies
 ├── README.md
+├── LICENSE                       # MIT License
 ├── .gitignore
 │
 ├── assets/                       # Screenshots and application assets
