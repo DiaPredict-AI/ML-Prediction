@@ -2,20 +2,32 @@
 
 An AI-powered web application that predicts diabetes risk using Machine Learning. Built with **Flask**, trained on the **Pima Indians Diabetes Dataset**, and served through a modern, interactive dashboard.
 
-![Python](https://img.shields.io/badge/Python-3.14-blue?logo=python)
-![Flask](https://img.shields.io/badge/Flask-Web_Framework-lightgrey?logo=flask)
-![ML](https://img.shields.io/badge/ML-Gradient_Boosting-green)
+<p align="center">
+  <img src="assets/dashboard.png" alt="Diabetes Intelligence Platform Dashboard" width="800">
+</p>
 
 ---
 
 ## ✨ Features
 
-- **🔐 Secure Login** — SQLite-backed authentication with hashed passwords (Werkzeug)
-- **🤖 ML Prediction** — Gradient Boosting classifier (~78.5% accuracy) predicts diabetes risk from 8 health metrics
-- **📊 Interactive Charts** — Chart.js visualizations for model comparison and glucose distribution
-- **📄 PDF Reports** — One-click downloadable patient assessment reports via jsPDF
-- **🎲 Random Test Cases** — Form auto-fills with one of 10 realistic sample cases on each page load
-- **💎 Modern UI** — Glassmorphism design, gradient hero section, smooth animations, and responsive layout
+* **🔐 Secure Login** — SQLite-backed authentication with hashed passwords (Werkzeug)
+  <p align="left">
+    <img src="assets/login.png" alt="Login Page" width="400">
+  </p>
+  
+* **🤖 ML Prediction** — Gradient Boosting classifier (~78.5% accuracy) predicts diabetes risk from 8 health metrics
+  <p align="left">
+    <img src="assets/health_assessment.png" alt="Health Assessment Form" width="600">
+  </p>
+
+* **📊 Interactive Charts** — Chart.js visualizations for model comparison and glucose distribution
+  <p align="left">
+    <img src="assets/analytics_glucose.png" alt="Glucose Distribution Chart" width="600">
+  </p>
+
+* **📄 PDF Reports** — One-click downloadable patient assessment reports via jsPDF
+* **🎲 Random Test Cases** — Form auto-fills with one of 10 realistic sample cases on each page load
+* **💎 Modern UI** — Glassmorphism design, gradient hero section, smooth animations, and responsive layout
 
 ---
 
@@ -26,7 +38,15 @@ ML Project/
 ├── app.py                        # Flask server — routes, auth, and prediction logic
 ├── requirements.txt              # Python dependencies
 ├── README.md
+├── README_temp.md                # Temporary README with screenshots
 ├── .gitignore
+│
+├── assets/                       # Screenshots and application assets
+│   ├── dashboard.png
+│   ├── login.png
+│   ├── health_assessment.png
+│   ├── analytics_glucose.png
+│   └── analytics_model_comparison.png
 │
 ├── data/
 │   └── diabetes.csv             # Pima Indians Diabetes Dataset (768 samples, 8 features)
@@ -59,8 +79,8 @@ ML Project/
 
 ### Prerequisites
 
-- Python 3.14+
-- pip
+* Python 3.10+
+* pip
 
 ### 1. Install Dependencies
 
@@ -114,6 +134,10 @@ The server starts at **http://127.0.0.1:5000**
 ---
 
 ## 📊 Models Evaluated
+
+<p align="center">
+  <img src="assets/analytics_model_comparison.png" alt="Model Comparison Insights" width="800">
+</p>
 
 | Model | Accuracy |
 |-------|----------|
